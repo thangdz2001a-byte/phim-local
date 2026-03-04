@@ -1,12 +1,160 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Xem phim - 65CTT3</title>
+
+<style>
+body{
+  margin:0;
+  background:#0b0f1a;
+  color:#fff;
+  font-family:Arial, sans-serif;
+}
+
+/* ===== NAVBAR ===== */
+.navbar{
+  background:linear-gradient(90deg,#0f1b2d,#132a4a);
+  padding:15px 25px;
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  flex-wrap:wrap;
+}
+
+.logo a{
+  color:#00d4ff;
+  font-size:26px;
+  font-weight:bold;
+  text-decoration:none;
+}
+
+.search-bar{
+  display:flex;
+  gap:8px;
+}
+
+.search-bar input{
+  padding:8px 12px;
+  border-radius:6px;
+  border:none;
+  outline:none;
+  width:200px;
+}
+
+.search-bar button{
+  padding:8px 14px;
+  border:none;
+  border-radius:6px;
+  background:#00d4ff;
+  cursor:pointer;
+  font-weight:bold;
+}
+
+.search-bar button:hover{
+  background:#00aacc;
+}
+
+/* ===== CONTAINER ===== */
+.container{
+  padding:20px;
+  max-width:1200px;
+  margin:auto;
+}
+
+/* ===== PLAYER ===== */
+.player{
+  width:100%;
+  aspect-ratio:16/9;
+  background:#000;
+  margin-bottom:25px;
+  border-radius:10px;
+  overflow:hidden;
+}
+
+.player iframe{
+  width:100%;
+  height:100%;
+  border:none;
+}
+
+/* ===== EPISODE BUTTON ===== */
+.episode{
+  padding:8px 14px;
+  margin:6px 6px 6px 0;
+  border:none;
+  border-radius:6px;
+  cursor:pointer;
+  background:#1f2937;
+  color:#fff;
+  transition:0.2s;
+}
+
+.episode:hover{
+  background:#00d4ff;
+  color:#000;
+}
+
+.episode.active{
+  background:#00d4ff;
+  color:#000;
+  font-weight:bold;
+}
+
+/* Mobile */
+@media(max-width:600px){
+  .search-bar input{
+    width:100%;
+  }
+  .search-bar{
+    width:100%;
+    margin-top:10px;
+  }
+}
+</style>
+</head>
+
 <body>
 
-<div id="player"></div>
-<div id="content"></div>
+<div class="navbar">
+  <div class="logo">
+    <a href="index.html">65CTT3</a>
+  </div>
+
+  <div class="search-bar">
+    <input id="searchInput" placeholder="Tìm phim...">
+    <button onclick="goSearch()">Tìm</button>
+  </div>
+</div>
+
+<div class="container">
+  <div id="player" class="player"></div>
+  <div id="content"></div>
+</div>
 
 <script>
 const params = new URLSearchParams(window.location.search);
 const slug = params.get("slug");
+let currentButton = null;
 
+/* ===== SEARCH ===== */
+async function goSearch(){
+  const keyword = document.getElementById("searchInput").value.trim();
+  if(!keyword) return;
+
+  window.location.href = `/?search=${encodeURIComponent(keyword)}`;
+}
+
+/* Enter để tìm */
+document.getElementById("searchInput")
+.addEventListener("keypress", function(e){
+  if(e.key === "Enter"){
+    goSearch();
+  }
+});
+
+/* ===== LOAD MOVIE ===== */
 async function loadMovie(){
   const res = await fetch(`/api/phim/${slug}`);
   const data = await res.json();
@@ -14,37 +162,54 @@ async function loadMovie(){
   const movie = data.movie;
   const episodes = data.episodes || [];
 
-  // set video mặc định tập đầu
-  const firstLink = episodes?.[0]?.server_data?.[0]?.link_embed;
-
-  if(firstLink){
-    watch(firstLink);
-  }
-
-  let html = `
-    <h1>${movie.name}</h1>
-    <h3>Danh sách tập:</h3>
-  `;
+  let html = `<h2>${movie.name}</h2><h3>Danh sách tập:</h3>`;
 
   episodes.forEach(server=>{
     html += `<h4>${server.server_name}</h4>`;
-    html += server.server_data.map(ep=>`
-      <button onclick="watch('${ep.link_embed}')">
-        ${ep.name}
-      </button>
-    `).join("");
+    server.server_data.forEach((ep,index)=>{
+      html += `
+        <button 
+          class="episode"
+          onclick="watch('${ep.link_embed}', this)">
+          ${ep.name}
+        </button>
+      `;
+    });
   });
 
   document.getElementById("content").innerHTML = html;
+
+  /* Auto play + tô đậm tập đầu */
+  if(episodes[0]?.server_data[0]){
+    const firstBtn = document.querySelector(".episode");
+    watch(episodes[0].server_data[0].link_embed, firstBtn);
+  }
 }
 
-function watch(link){
-  document.getElementById("player").innerHTML = `
-    <iframe src="${link}" width="100%" height="500" frameborder="0" allowfullscreen></iframe>
-  `;
+/* ===== WATCH ===== */
+function watch(link, btn){
+
+  document.getElementById("player").innerHTML =
+    `<iframe src="${link}" allowfullscreen allow="autoplay"></iframe>`;
+
+  if(currentButton){
+    currentButton.classList.remove("active");
+  }
+
+  if(btn){
+    btn.classList.add("active");
+    currentButton = btn;
+  }
+
+  // 🚀 Cuộn mượt về đầu trang
+  window.scrollTo({
+    top: 0,
+    behavior: "smooth"
+  });
 }
 
 loadMovie();
 </script>
 
 </body>
+</html>

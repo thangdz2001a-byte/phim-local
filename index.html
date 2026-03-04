@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<title>Phim mới</title>
+
+<style>
+body{
+  background:#000;
+  color:#fff;
+  font-family:Arial;
+  margin:0;
+  padding:20px;
+}
+
+h1{
+  margin-bottom:15px;
+}
+
+.search-box{
+  margin-bottom:20px;
+}
+
+input{
+  padding:8px;
+  width:300px;
+}
+
+button{
+  padding:8px 15px;
+  background:red;
+  color:#fff;
+  border:none;
+  cursor:pointer;
+}
+
+.movies{
+  display:flex;
+  flex-wrap:wrap;
+  gap:15px;
+}
+
+.movie{
+  width:160px;
+}
+
+.movie img{
+  width:100%;
+  height:230px;
+  object-fit:cover;
+  background:#222;
+}
+
+.movie p{
+  font-size:14px;
+  margin:5px 0;
+}
+</style>
+</head>
+<body>
+
+<h1>65CTT3</h1>
+
+<div class="search-box">
+  <input id="keyword" placeholder="Nhập tên phim...">
+  <button onclick="searchMovie()">Tìm</button>
+</div>
+
+<div class="movies" id="movies"></div>
+
+<script>
+
+const movies = document.getElementById("movies");
+
+
+// ================== LOAD PHIM MỚI ==================
+async function loadMovies(){
+  const res = await fetch("/api/phim-moi");
+  const data = await res.json();
+
+  render(data.items || []);
+}
+
+
+// ================== TÌM KIẾM ==================
+async function searchMovie(){
+
+  const keyword = document.getElementById("keyword").value.trim();
+
+  if(!keyword){
+    loadMovies();
+    return;
+  }
+
+  const res = await fetch(
+    `/api/tim-kiem?keyword=${encodeURIComponent(keyword)}&page=1&limit=20`
+  );
+
+  const data = await res.json();
+
+  console.log("Search data:", data);
+
+  if(data.data && data.data.items){
+    render(data.data.items);
+  }else{
+    render([]);
+  }
+}
+
+
+// ================== RENDER ==================
+function render(list){
+
+  movies.innerHTML = "";
+
+  if(!list || list.length === 0){
+    movies.innerHTML = "<p>Không tìm thấy phim</p>";
+    return;
+  }
+
+  list.forEach(movie=>{
+
+    // Lấy ảnh từ mọi trường hợp
+    let url = movie.poster_url || movie.thumb_url || "";
+
+    // Nếu là đường dẫn tương đối
+    if(url && !url.startsWith("http")){
+      url = "https://phimimg.com/" + url.replace(/^\/+/, "");
+    }
+
+    // Convert sang webp
+    const imageUrl = url
+      ? `https://phimapi.com/image.php?url=${url}`
+      : "https://via.placeholder.com/300x450?text=No+Image";
+
+    movies.innerHTML += `
+      <div class="movie">
+        <a href="movie.html?slug=${movie.slug}" style="color:white;text-decoration:none">
+          <img src="${imageUrl}" loading="lazy">
+          <p>${movie.name}</p>
+        </a>
+      </div>
+    `;
+  });
+}
+
+
+// ================== CHẠY ==================
+loadMovies();
+
+</script>
+
+</body>
+</html>

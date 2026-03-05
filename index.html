@@ -2,7 +2,7 @@
 <html lang="vi">
 <head>
 <meta charset="UTF-8">
-<title>Phim mới</title>
+<title>POLITE - Phim mới</title>
 
 <style>
 body{
@@ -13,17 +13,134 @@ body{
   padding:20px;
 }
 
-h1{
-  margin-bottom:15px;
+/* ===== LOGO ===== */
+.logo{
+  font-size:48px;
+  font-weight:900;
+  letter-spacing:4px;
+  cursor:pointer;
+  background:linear-gradient(90deg,#00f0ff,#00ff88);
+  -webkit-background-clip:text;
+  -webkit-text-fill-color:transparent;
+  text-shadow:
+    0 0 10px rgba(0,255,255,0.8),
+    0 0 20px rgba(0,255,255,0.6);
 }
 
+/* ===== MENU ===== */
+.menu{
+  display:flex;
+  gap:20px;
+  margin:20px 0;
+}
+
+.dropdown{
+  position:relative;
+}
+
+.dropdown button{
+  padding:8px 12px;
+  background:#111;
+  color:#fff;
+  border:1px solid #333;
+  cursor:pointer;
+}
+
+.dropdown-content{
+  display:none;
+  position:absolute;
+  background:#111;
+  min-width:200px;
+  max-height:300px;
+  overflow-y:auto;
+  border:1px solid #333;
+  z-index:100;
+}
+
+.dropdown-content div{
+  padding:8px;
+  cursor:pointer;
+}
+
+.dropdown-content div:hover{
+  background:#222;
+}
+
+/* ===== SEARCH ===== */
 .search-box{
   margin-bottom:20px;
+  display:flex;
+  align-items:center;
+  gap:0;
 }
 
-input{
+#keyword{
   padding:8px;
   width:300px;
+  height:40px;
+  box-sizing:border-box;
+  border:1px solid #333;
+  border-right:none;
+  border-radius:6px 0 0 6px;
+}
+
+.search-box button{
+  height:40px;
+  padding:0 18px;
+  background:red;
+  color:#fff;
+  border:1px solid #333;
+  border-left:none;
+  border-radius:0 6px 6px 0;
+  cursor:pointer;
+}
+
+.search-wrapper{
+  position:relative;
+  width:300px;
+}
+
+#keyword{
+  padding:8px;
+  width:100%;
+}
+
+.suggestions{
+  position:absolute;
+  top:100%;
+  left:0;
+  right:0;
+  background:#111;
+  border:1px solid #333;
+  max-height:350px;
+  overflow-y:auto;
+  display:none;
+  z-index:999;
+}
+
+.suggestion-item{
+  display:flex;
+  align-items:center;
+  gap:10px;
+  padding:8px;
+  cursor:pointer;
+  border-bottom:1px solid #222;
+}
+
+.suggestion-item img{
+  width:40px;
+  height:60px;
+  object-fit:cover;
+  border-radius:4px;
+}
+
+.suggestion-item.active{
+  background:#222;
+}
+
+.highlight{
+  color:#00ffcc;
+  font-weight:bold;
 }
 
 button{
@@ -34,6 +151,7 @@ button{
   cursor:pointer;
 }
 
+/* ===== MOVIES ===== */
 .movies{
   display:flex;
   flex-wrap:wrap;
@@ -57,12 +175,28 @@ button{
 }
 </style>
 </head>
+
 <body>
 
-<h1>65CTT3</h1>
+<h1 class="logo" onclick="goHome()">𝓟𝓞𝓛𝓘𝓣𝓔</h1>
+
+<div class="menu">
+  <div class="dropdown">
+    <button onclick="toggleCategory()">Thể loại ▼</button>
+    <div class="dropdown-content" id="categoryList"></div>
+  </div>
+
+  <div class="dropdown">
+    <button onclick="toggleCountry()">Quốc gia ▼</button>
+    <div class="dropdown-content" id="countryList"></div>
+  </div>
+</div>
 
 <div class="search-box">
-  <input id="keyword" placeholder="Nhập tên phim...">
+  <div class="search-wrapper">
+    <input id="keyword" placeholder="Nhập tên phim..." autocomplete="off">
+    <div id="suggestions" class="suggestions"></div>
+  </div>
   <button onclick="searchMovie()">Tìm</button>
 </div>
 
@@ -72,21 +206,23 @@ button{
 
 const movies = document.getElementById("movies");
 
+/* ================= HOME ================= */
+function goHome(){
+  document.getElementById("keyword").value = "";
+  loadMovies();
+  window.history.replaceState({}, document.title, "/");
+}
 
-// ================== LOAD PHIM MỚI ==================
+/* ================= LOAD PHIM MỚI ================= */
 async function loadMovies(){
   const res = await fetch("/api/phim-moi");
   const data = await res.json();
-
   render(data.items || []);
 }
 
-
-// ================== TÌM KIẾM ==================
+/* ================= SEARCH NÚT ================= */
 async function searchMovie(){
-
   const keyword = document.getElementById("keyword").value.trim();
-
   if(!keyword){
     loadMovies();
     return;
@@ -97,20 +233,198 @@ async function searchMovie(){
   );
 
   const data = await res.json();
+  render(data.data?.items || []);
+}
 
-  console.log("Search data:", data);
+/* ================= LOAD CATEGORY ================= */
+async function loadCategories(){
+  const res = await fetch("https://phimapi.com/the-loai");
+  const data = await res.json();
+  const list = document.getElementById("categoryList");
+  list.innerHTML = "";
 
-  if(data.data && data.data.items){
-    render(data.data.items);
-  }else{
-    render([]);
+  data.forEach(item=>{
+    list.innerHTML += `
+      <div onclick="loadByCategory('${item.slug}')">
+        ${item.name}
+      </div>
+    `;
+  });
+}
+
+/* ================= LOAD COUNTRY ================= */
+async function loadCountries(){
+  const res = await fetch("https://phimapi.com/quoc-gia");
+  const data = await res.json();
+  const list = document.getElementById("countryList");
+  list.innerHTML = "";
+
+  data.forEach(item=>{
+    list.innerHTML += `
+      <div onclick="loadByCountry('${item.slug}')">
+        ${item.name}
+      </div>
+    `;
+  });
+}
+
+async function loadByCategory(slug){
+  const res = await fetch(
+    `https://phimapi.com/v1/api/the-loai/${slug}?page=1&limit=20`
+  );
+  const data = await res.json();
+  render(data.data?.items || []);
+}
+
+async function loadByCountry(slug){
+  const res = await fetch(
+    `https://phimapi.com/v1/api/quoc-gia/${slug}?page=1&limit=20`
+  );
+  const data = await res.json();
+  render(data.data?.items || []);
+}
+
+function toggleCategory(){
+  const el = document.getElementById("categoryList");
+  el.style.display = el.style.display === "block" ? "none" : "block";
+}
+
+function toggleCountry(){
+  const el = document.getElementById("countryList");
+  el.style.display = el.style.display === "block" ? "none" : "block";
+}
+
+/* ================= NETFLIX SEARCH PRO ================= */
+
+let searchTimeout;
+let currentIndex = -1;
+let currentList = [];
+
+const input = document.getElementById("keyword");
+const suggestionBox = document.getElementById("suggestions");
+
+function removeVietnamese(str){
+  return str.normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/đ/g, "d")
+    .replace(/Đ/g, "D")
+    .toLowerCase();
+}
+
+function highlightMatch(text, keyword){
+  const regex = new RegExp(`(${keyword})`, "gi");
+  return text.replace(regex, `<span class="highlight">$1</span>`);
+}
+
+input.addEventListener("input", function(){
+
+  clearTimeout(searchTimeout);
+
+  searchTimeout = setTimeout(async () => {
+
+    const keyword = input.value.trim();
+    if(!keyword){
+      suggestionBox.style.display = "none";
+      return;
+    }
+
+    const res = await fetch(
+      `/api/tim-kiem?keyword=${encodeURIComponent(keyword)}&page=1&limit=8`
+    );
+
+    const data = await res.json();
+    const list = data.data?.items || [];
+
+    currentList = list;
+    currentIndex = -1;
+    suggestionBox.innerHTML = "";
+
+    const keywordNoAccent = removeVietnamese(keyword);
+
+    list.forEach((movie, index)=>{
+
+      const name = movie.name;
+      const nameNoAccent = removeVietnamese(name);
+
+      if(nameNoAccent.includes(keywordNoAccent)){
+
+        let url = movie.poster_url || movie.thumb_url || "";
+        if(url && !url.startsWith("http")){
+          url = "https://phimimg.com/" + url.replace(/^\/+/, "");
+        }
+
+        const imageUrl = url
+          ? `https://phimapi.com/image.php?url=${url}`
+          : "https://via.placeholder.com/40x60";
+
+        suggestionBox.innerHTML += `
+          <div class="suggestion-item" onclick="goToMovie('${movie.slug}')">
+            <img src="${imageUrl}">
+            <div>${highlightMatch(name, keyword)}</div>
+          </div>
+        `;
+      }
+    });
+
+    suggestionBox.style.display = "block";
+
+  }, 300);
+});
+
+input.addEventListener("keydown", function(e){
+
+  const items = document.querySelectorAll(".suggestion-item");
+
+  if(e.key === "ArrowDown"){
+    e.preventDefault();
+    currentIndex++;
+    if(currentIndex >= items.length) currentIndex = 0;
+    updateActive(items);
+  }
+
+  if(e.key === "ArrowUp"){
+    e.preventDefault();
+    currentIndex--;
+    if(currentIndex < 0) currentIndex = items.length - 1;
+    updateActive(items);
+  }
+
+  if(e.key === "Enter"){
+    e.preventDefault();
+    if(currentIndex >= 0 && currentList[currentIndex]){
+      goToMovie(currentList[currentIndex].slug);
+    }
+  }
+});
+
+function updateActive(items){
+
+  items.forEach(item => item.classList.remove("active"));
+
+  if(items[currentIndex]){
+    items[currentIndex].classList.add("active");
+
+    // 🔥 Tự cuộn trong dropdown
+    items[currentIndex].scrollIntoView({
+      block: "nearest",
+      behavior: "smooth"
+    });
   }
 }
 
+function goToMovie(slug){
+  window.location.href = `movie.html?slug=${slug}`;
+}
 
-// ================== RENDER ==================
+document.addEventListener("click", function(e){
+  if(!e.target.closest(".search-wrapper")){
+    suggestionBox.style.display = "none";
+  }
+});
+
+/* ================= RENDER ================= */
+
 function render(list){
-
   movies.innerHTML = "";
 
   if(!list || list.length === 0){
@@ -119,16 +433,12 @@ function render(list){
   }
 
   list.forEach(movie=>{
-
-    // Lấy ảnh từ mọi trường hợp
     let url = movie.poster_url || movie.thumb_url || "";
 
-    // Nếu là đường dẫn tương đối
     if(url && !url.startsWith("http")){
       url = "https://phimimg.com/" + url.replace(/^\/+/, "");
     }
 
-    // Convert sang webp
     const imageUrl = url
       ? `https://phimapi.com/image.php?url=${url}`
       : "https://via.placeholder.com/300x450?text=No+Image";
@@ -144,9 +454,10 @@ function render(list){
   });
 }
 
-
-// ================== CHẠY ==================
+/* ================= INIT ================= */
 loadMovies();
+loadCategories();
+loadCountries();
 
 </script>
 
